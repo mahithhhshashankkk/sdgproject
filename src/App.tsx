@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Component, ReactNode, useState } from 'react';
 import { AuthProvider, useAuth } from './lib/auth';
 import RolePicker from './screens/RolePicker';
 import FarmerLanguage from './screens/FarmerLanguage';
@@ -7,6 +7,22 @@ import SosFlow from './screens/SosFlow';
 import TechnicianHome from './screens/TechnicianHome';
 import VendorHome from './screens/VendorHome';
 import AdminHome from './screens/AdminHome';
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center gap-3 p-6 bg-amber-50 text-center">
+          <p className="text-xl font-bold text-amber-700">Something went wrong.</p>
+          <button onClick={() => window.location.reload()} className="bg-amber-500 text-white rounded-xl px-6 py-3 font-semibold">Reload</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function Router() {
   const { user } = useAuth();
@@ -32,8 +48,10 @@ function Router() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Router />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

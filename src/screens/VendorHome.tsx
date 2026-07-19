@@ -17,24 +17,28 @@ export default function VendorHome() {
   const [tab, setTab] = useState<'new' | 'accepted' | 'inventory'>('new');
 
   const load = async () => {
-    if (!user) return;
-    const { data: v } = await supabase.from('vendors').select('id,company_name,inventory_level,region').eq('user_id', user.id).maybeSingle();
-    setVendor(v as any);
-    if (v) {
-      const { data: p } = await supabase.from('spare_parts').select('id,part_name,quantity,price,demand_forecast').eq('vendor_id', (v as any).id);
-      setParts((p as Part[]) ?? []);
-    }
-    const { data: o } = await supabase.from('install_requests').select('*').order('created_at', { ascending: false });
-    setOrders((o as Order[]) ?? []);
+    try {
+      if (!user) return;
+      const { data: v } = await supabase.from('vendors').select('id,company_name,inventory_level,region').eq('user_id', user.id).maybeSingle();
+      setVendor(v as any);
+      if (v) {
+        const { data: p } = await supabase.from('spare_parts').select('id,part_name,quantity,price,demand_forecast').eq('vendor_id', (v as any).id);
+        setParts((p as Part[]) ?? []);
+      }
+      const { data: o } = await supabase.from('install_requests').select('*').order('created_at', { ascending: false });
+      setOrders((o as Order[]) ?? []);
+    } catch { /* best-effort */ }
   };
 
   useEffect(() => { load(); }, [user]);
 
   const act = async (id: string, status: 'accepted' | 'rejected') => {
-    const patch: any = { status };
-    if (status === 'accepted' && vendor) patch.vendor_id = vendor.id;
-    await supabase.from('install_requests').update(patch).eq('id', id);
-    load();
+    try {
+      const patch: any = { status };
+      if (status === 'accepted' && vendor) patch.vendor_id = vendor.id;
+      await supabase.from('install_requests').update(patch).eq('id', id);
+      load();
+    } catch { /* best-effort */ }
   };
 
   const totalStock = parts.reduce((s, p) => s + p.quantity, 0);

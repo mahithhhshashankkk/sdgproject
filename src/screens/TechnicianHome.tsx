@@ -25,52 +25,57 @@ export default function TechnicianHome() {
 
   useEffect(() => {
     (async () => {
-      if (!user) return;
-      const { data: techRow } = await supabase.from('technicians').select('id,availability_status,rating').eq('user_id', user.id).maybeSingle();
-      setTech(techRow as any);
-      if (techRow) {
-        const { data: jobRows } = await supabase
-          .from('jobs')
-          .select('id,status,created_at,complaint_id,complaints(voice_text,farmer_id)')
-          .eq('technician_id', (techRow as any).id)
-          .in('status', ['assigned', 'travelling', 'arrived'])
-          .order('created_at', { ascending: true });
-        const js = (jobRows as unknown as Job[]) ?? [];
-        setJobs(js);
-        // fetch farmer info for each job's farmer
-        const ids = [...new Set(js.map((j) => j.complaints?.farmer_id).filter(Boolean))] as string[];
-        if (ids.length) {
-          const { data: fRows } = await supabase.from('farmers').select('id,user_id,address').in('id', ids);
-          const uids = [...new Set((fRows ?? []).map((f: any) => f.user_id))] as string[];
-          const { data: uRows } = await supabase.from('users').select('id,name,phone,region').in('id', uids);
-          const map: Record<string, FarmerInfo> = {};
-          (fRows ?? []).forEach((f: any) => {
-            const u = (uRows ?? []).find((x: any) => x.id === f.user_id) as any;
-            if (u) map[f.id] = { name: u.name, phone: u.phone, address: f.address, region: u.region };
-          });
-          setFarmers(map);
+      try {
+        if (!user) return;
+        const { data: techRow } = await supabase.from('technicians').select('id,availability_status,rating').eq('user_id', user.id).maybeSingle();
+        setTech(techRow as any);
+        if (techRow) {
+          const { data: jobRows } = await supabase
+            .from('jobs')
+            .select('id,status,created_at,complaint_id,complaints(voice_text,farmer_id)')
+            .eq('technician_id', (techRow as any).id)
+            .in('status', ['assigned', 'travelling', 'arrived'])
+            .order('created_at', { ascending: true });
+          const js = (jobRows as unknown as Job[]) ?? [];
+          setJobs(js);
+          const ids = [...new Set(js.map((j) => j.complaints?.farmer_id).filter(Boolean))] as string[];
+          if (ids.length) {
+            const { data: fRows } = await supabase.from('farmers').select('id,user_id,address').in('id', ids);
+            const uids = [...new Set((fRows ?? []).map((f: any) => f.user_id))] as string[];
+            const { data: uRows } = await supabase.from('users').select('id,name,phone,region').in('id', uids);
+            const map: Record<string, FarmerInfo> = {};
+            (fRows ?? []).forEach((f: any) => {
+              const u = (uRows ?? []).find((x: any) => x.id === f.user_id) as any;
+              if (u) map[f.id] = { name: u.name, phone: u.phone, address: f.address, region: u.region };
+            });
+            setFarmers(map);
+          }
         }
-      }
+      } catch { /* best-effort */ }
       setLoading(false);
     })();
   }, [user]);
 
   const advance = async (job: Job) => {
-    const next = job.status === 'assigned' ? 'travelling' : job.status === 'travelling' ? 'arrived' : 'completed';
-    const patch: any = { status: next };
-    if (next === 'completed') patch.completed_at = new Date().toISOString();
-    await supabase.from('jobs').update(patch).eq('id', job.id);
-    if (next === 'completed') {
-      await supabase.from('complaints').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', job.complaint_id);
-    }
-    setJobs((js) => js.filter((j) => j.id !== job.id));
+    try {
+      const next = job.status === 'assigned' ? 'travelling' : job.status === 'travelling' ? 'arrived' : 'completed';
+      const patch: any = { status: next };
+      if (next === 'completed') patch.completed_at = new Date().toISOString();
+      await supabase.from('jobs').update(patch).eq('id', job.id);
+      if (next === 'completed') {
+        await supabase.from('complaints').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', job.complaint_id);
+      }
+      setJobs((js) => js.filter((j) => j.id !== job.id));
+    } catch { /* best-effort */ }
   };
 
   const toggleAvail = async () => {
-    if (!tech) return;
-    const next = tech.availability_status === 'available' ? 'busy' : 'available';
-    await supabase.from('technicians').update({ availability_status: next }).eq('id', tech.id);
-    setTech({ ...tech, availability_status: next });
+    try {
+      if (!tech) return;
+      const next = tech.availability_status === 'available' ? 'busy' : 'available';
+      await supabase.from('technicians').update({ availability_status: next }).eq('id', tech.id);
+      setTech({ ...tech, availability_status: next });
+    } catch { /* best-effort */ }
   };
 
   return (

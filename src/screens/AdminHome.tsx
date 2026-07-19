@@ -17,39 +17,40 @@ export default function AdminHome() {
 
   useEffect(() => {
     (async () => {
-      const [{ count: farmers }, { count: techs }, { count: complaints }, { count: pending }, { count: completed }, { count: installs }] = await Promise.all([
-        supabase.from('farmers').select('id', { count: 'exact', head: true }),
-        supabase.from('technicians').select('id', { count: 'exact', head: true }),
-        supabase.from('complaints').select('id', { count: 'exact', head: true }),
-        supabase.from('complaints').select('id', { count: 'exact', head: true }).in('status', ['open', 'assigned', 'in_progress']),
-        supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
-        supabase.from('install_requests').select('id', { count: 'exact', head: true }),
-      ]);
-      setMetrics({ farmers: farmers ?? 0, techs: techs ?? 0, complaints: complaints ?? 0, pending: pending ?? 0, completed: completed ?? 0, installs: installs ?? 0 });
+      try {
+        const [{ count: farmers }, { count: techs }, { count: complaints }, { count: pending }, { count: completed }, { count: installs }] = await Promise.all([
+          supabase.from('farmers').select('id', { count: 'exact', head: true }),
+          supabase.from('technicians').select('id', { count: 'exact', head: true }),
+          supabase.from('complaints').select('id', { count: 'exact', head: true }),
+          supabase.from('complaints').select('id', { count: 'exact', head: true }).in('status', ['open', 'assigned', 'in_progress']),
+          supabase.from('jobs').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
+          supabase.from('install_requests').select('id', { count: 'exact', head: true }),
+        ]);
+        setMetrics({ farmers: farmers ?? 0, techs: techs ?? 0, complaints: complaints ?? 0, pending: pending ?? 0, completed: completed ?? 0, installs: installs ?? 0 });
 
-      // Gather tickets from complaints (farmer sector) and install_requests (vendor sector)
-      const { data: cRows } = await supabase.from('complaints').select('id,status,created_at,voice_text,farmer_id').order('created_at', { ascending: false }).limit(50);
-      const farmerIds = [...new Set((cRows ?? []).map((c: any) => c.farmer_id).filter(Boolean))] as string[];
-      const { data: fRows } = await supabase.from('farmers').select('id,user_id').in('id', farmerIds);
-      const uids = [...new Set((fRows ?? []).map((f: any) => f.user_id))] as string[];
-      const { data: uRows } = await supabase.from('users').select('id,name').in('id', uids);
-      const fName = (fid: string) => {
-        const f = (fRows ?? []).find((x: any) => x.id === fid);
-        const u = (uRows ?? []).find((x: any) => x.id === f?.user_id) as any;
-        return u?.name ?? 'Unknown farmer';
-      };
-      const cTickets: Ticket[] = (cRows ?? []).map((c: any) => ({
-        id: c.id, sector: 'farmer', type: t(lang, 'complaints'), raisedBy: fName(c.farmer_id),
-        status: c.status, date: c.created_at,
-      }));
+        const { data: cRows } = await supabase.from('complaints').select('id,status,created_at,voice_text,farmer_id').order('created_at', { ascending: false }).limit(50);
+        const farmerIds = [...new Set((cRows ?? []).map((c: any) => c.farmer_id).filter(Boolean))] as string[];
+        const { data: fRows } = await supabase.from('farmers').select('id,user_id').in('id', farmerIds);
+        const uids = [...new Set((fRows ?? []).map((f: any) => f.user_id))] as string[];
+        const { data: uRows } = await supabase.from('users').select('id,name').in('id', uids);
+        const fName = (fid: string) => {
+          const f = (fRows ?? []).find((x: any) => x.id === fid);
+          const u = (uRows ?? []).find((x: any) => x.id === f?.user_id) as any;
+          return u?.name ?? 'Unknown farmer';
+        };
+        const cTickets: Ticket[] = (cRows ?? []).map((c: any) => ({
+          id: c.id, sector: 'farmer', type: t(lang, 'complaints'), raisedBy: fName(c.farmer_id),
+          status: c.status, date: c.created_at,
+        }));
 
-      const { data: iRows } = await supabase.from('install_requests').select('id,farmer_name,status,created_at').order('created_at', { ascending: false }).limit(50);
-      const iTickets: Ticket[] = (iRows ?? []).map((i: any) => ({
-        id: i.id, sector: 'vendor', type: t(lang, 'installReqs'), raisedBy: i.farmer_name,
-        status: i.status, date: i.created_at,
-      }));
+        const { data: iRows } = await supabase.from('install_requests').select('id,farmer_name,status,created_at').order('created_at', { ascending: false }).limit(50);
+        const iTickets: Ticket[] = (iRows ?? []).map((i: any) => ({
+          id: i.id, sector: 'vendor', type: t(lang, 'installReqs'), raisedBy: i.farmer_name,
+          status: i.status, date: i.created_at,
+        }));
 
-      setTickets([...cTickets, ...iTickets].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+        setTickets([...cTickets, ...iTickets].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      } catch { /* best-effort */ }
       setLoading(false);
     })();
   }, [user, lang]);

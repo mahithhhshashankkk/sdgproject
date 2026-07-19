@@ -84,40 +84,44 @@ export default function SosFlow({ onDone }: { onDone: () => void }) {
 
   const submitComplaint = async () => {
     if (!user) return;
-    const { data: farmer } = await supabase.from('farmers').select('id').eq('user_id', user.id).maybeSingle();
-    if (!farmer) { setStep('done'); return; }
+    try {
+      const { data: farmer } = await supabase.from('farmers').select('id').eq('user_id', user.id).maybeSingle();
+      if (!farmer) { setStep('done'); return; }
 
-    const { data: nearest } = await supabase.rpc('nearest_technician', {
-      p: coords ? `POINT(${coords.lng} ${coords.lat})` : null,
-    });
+      const { data: nearest } = await supabase.rpc('nearest_technician', {
+        p: coords ? `POINT(${coords.lng} ${coords.lat})` : null,
+      });
 
-    const complaintRow: any = {
-      farmer_id: farmer.id,
-      status: nearest ? 'assigned' : 'open',
-      voice_text: `Pump not working: ${answers.q1 ? 'yes' : 'no'}, Lights: ${answers.q2 ? 'yes' : 'no'}, Water: ${answers.q3 ? 'yes' : 'no'}`,
-      assigned_technician_id: nearest ?? null,
-      priority: 'sos',
-      category: 'general',
-    };
-    if (coords) {
-      complaintRow.location = `POINT(${coords.lng} ${coords.lat})`;
-    }
-
-    const { data: complaint, error } = await supabase.from('complaints').insert(complaintRow).select().single();
-    if (error || !complaint) { setStep('done'); return; }
-
-    if (nearest) {
-      const { data: tech } = await supabase.from('technicians').select('id').eq('id', nearest).maybeSingle();
-      if (tech) {
-        const { data: job } = await supabase.from('jobs').insert({
-          complaint_id: complaint.id,
-          technician_id: tech.id,
-          status: 'assigned',
-        }).select().single();
-        if (job) setJobId(job.id);
+      const complaintRow: any = {
+        farmer_id: farmer.id,
+        status: nearest ? 'assigned' : 'open',
+        voice_text: `Pump not working: ${answers.q1 ? 'yes' : 'no'}, Lights: ${answers.q2 ? 'yes' : 'no'}, Water: ${answers.q3 ? 'yes' : 'no'}`,
+        assigned_technician_id: nearest ?? null,
+        priority: 'sos',
+        category: 'general',
+      };
+      if (coords) {
+        complaintRow.location = `POINT(${coords.lng} ${coords.lat})`;
       }
-      setStep('assigned');
-    } else {
+
+      const { data: complaint, error } = await supabase.from('complaints').insert(complaintRow).select().single();
+      if (error || !complaint) { setStep('done'); return; }
+
+      if (nearest) {
+        const { data: tech } = await supabase.from('technicians').select('id').eq('id', nearest).maybeSingle();
+        if (tech) {
+          const { data: job } = await supabase.from('jobs').insert({
+            complaint_id: complaint.id,
+            technician_id: tech.id,
+            status: 'assigned',
+          }).select().single();
+          if (job) setJobId(job.id);
+        }
+        setStep('assigned');
+      } else {
+        setStep('done');
+      }
+    } catch {
       setStep('done');
     }
   };

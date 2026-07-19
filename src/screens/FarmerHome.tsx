@@ -30,16 +30,18 @@ export default function FarmerHome({ onSos, onChangeLang }: {
   useEffect(() => {
     speak(`${t(lang, 'hello')} ${user?.name ?? ''}. ${t(lang, 'howHelp')}`, lang);
     (async () => {
-      const { data: farmer } = await supabase.from('farmers').select('id,region').eq('user_id', user!.id).maybeSingle();
-      if (farmer) {
-        const { data: m } = await supabase.from('maintenance_schedules').select('last_cleaning,last_battery_check,amc_expiry').eq('farmer_id', (farmer as any).id).maybeSingle();
-        if (m) setMaint(m as Maintenance);
-        const region = (farmer as any).region ?? 'Kolar';
-        const { data: w } = await supabase.from('weather_alerts').select('forecast,rain_expected').eq('region', region).order('date', { ascending: false }).limit(1).maybeSingle();
-        if (w) setWeather(w as Weather);
-      }
-      const { data: s } = await supabase.from('govt_schemes').select('*');
-      setSchemes((s as Scheme[]) ?? []);
+      try {
+        const { data: farmer } = await supabase.from('farmers').select('id').eq('user_id', user!.id).maybeSingle();
+        if (farmer) {
+          const { data: m } = await supabase.from('maintenance_schedules').select('last_cleaning,last_battery_check,amc_expiry').eq('farmer_id', (farmer as any).id).maybeSingle();
+          if (m) setMaint(m as Maintenance);
+          const region = user?.region ?? 'Kolar';
+          const { data: w } = await supabase.from('weather_alerts').select('forecast,rain_expected').eq('region', region).order('date', { ascending: false }).limit(1).maybeSingle();
+          if (w) setWeather(w as Weather);
+        }
+        const { data: s } = await supabase.from('govt_schemes').select('*');
+        setSchemes((s as Scheme[]) ?? []);
+      } catch { /* data is best-effort; UI still renders */ }
     })();
   }, [user, lang]);
 
@@ -188,20 +190,22 @@ function InstallForm({ lang, onDone, kind }: { lang: string; onDone: () => void;
 
   const submit = async () => {
     setBusy(true);
-    if (kind === 'install') {
-      await supabase.from('install_requests').insert({
-        farmer_name: name, phone, region: user?.region ?? null,
-        acres: acres ? Number(acres) : null, pump_model: model || null, status: 'new',
-      });
-    } else {
-      const { data: farmer } = await supabase.from('farmers').select('id').eq('user_id', user!.id).maybeSingle();
-      if (farmer) await supabase.from('complaints').insert({
-        farmer_id: (farmer as any).id, status: 'open', priority: 'normal',
-        voice_text: `Service request by ${name}`, category: 'general',
-      });
-    }
+    try {
+      if (kind === 'install') {
+        await supabase.from('install_requests').insert({
+          farmer_name: name, phone, region: user?.region ?? null,
+          acres: acres ? Number(acres) : null, pump_model: model || null, status: 'new',
+        });
+      } else {
+        const { data: farmer } = await supabase.from('farmers').select('id').eq('user_id', user!.id).maybeSingle();
+        if (farmer) await supabase.from('complaints').insert({
+          farmer_id: (farmer as any).id, status: 'open', priority: 'normal',
+          voice_text: `Service request by ${name}`, category: 'general',
+        });
+      }
+      setDone(true);
+    } catch { setDone(true); }
     setBusy(false);
-    setDone(true);
   };
 
   if (done) return (
