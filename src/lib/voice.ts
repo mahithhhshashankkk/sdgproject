@@ -3,21 +3,34 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 // Web Speech API wrapper. Browser-native, no external dependency.
 // Works best in Chrome/Edge. Gracefully degrades where unsupported.
 
+type SpeechRecognitionResultLike = { transcript: string };
+type SpeechRecognitionResultsLike = {
+  length: number;
+  [index: number]: { [index: number]: SpeechRecognitionResultLike };
+};
+type SpeechRecognitionEventLike = { results: SpeechRecognitionResultsLike };
+
 type SpeechRecognitionLike = {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
   start: () => void;
   stop: () => void;
-  onresult: ((e: any) => void) | null;
-  onerror: ((e: any) => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: Event) => void) | null;
   onend: (() => void) | null;
 };
 
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+type SpeechRecognitionWindow = Window & typeof globalThis & {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+};
+
 function getRecognition(): SpeechRecognitionLike | null {
-  const w = window as any;
-  const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
-  return Ctor ? new Ctor() : null;
+  const speechWindow = window as SpeechRecognitionWindow;
+  const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+  return Recognition ? new Recognition() : null;
 }
 
 export function useVoice(lang: string) {
@@ -34,16 +47,16 @@ export function useVoice(lang: string) {
     }
     r.continuous = false;
     r.interimResults = true;
-    r.onresult = (e: any) => {
+    r.onresult = (event) => {
       let txt = '';
-      for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+      for (let i = 0; i < event.results.length; i++) txt += event.results[i][0].transcript;
       setTranscript(txt);
     };
     r.onerror = () => setListening(false);
     r.onend = () => setListening(false);
     recRef.current = r;
     return () => {
-      try { r.stop(); } catch {}
+      try { r.stop(); } catch { /* Recognition may already be stopped. */ }
     };
   }, []);
 
@@ -59,13 +72,13 @@ export function useVoice(lang: string) {
     setTranscript('');
     const r = recRef.current;
     if (!r) return;
-    try { r.start(); setListening(true); } catch {}
+    try { r.start(); setListening(true); } catch { /* Recognition may already be running. */ }
   }, []);
 
   const stop = useCallback(() => {
     const r = recRef.current;
     if (!r) return;
-    try { r.stop(); } catch {}
+    try { r.stop(); } catch { /* Recognition may already be stopped. */ }
     setListening(false);
   }, []);
 
@@ -78,5 +91,5 @@ export function speak(text: string, lang: string) {
   const map: Record<string, string> = { en: 'en-IN', kn: 'kn-IN', hi: 'hi-IN', ta: 'ta-IN' };
   u.lang = map[lang] ?? 'en-IN';
   u.rate = 0.9;
-  try { window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch {}
+  try { window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch { /* Speech synthesis can be unavailable at runtime. */ }
 }

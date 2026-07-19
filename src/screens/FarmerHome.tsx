@@ -13,6 +13,7 @@ const LANG_BADGE: Record<string, string> = { en: 'EN', kn: 'ಕನ್ನಡ', te
 type Maintenance = { last_cleaning: string | null; last_battery_check: string | null; amc_expiry: string | null };
 type Weather = { forecast: string; rain_expected: boolean };
 type Scheme = { id: string; name: string; description: string | null; subsidy_percent: number | null; region: string | null; eligibility: string | null };
+type FarmerRecord = { id: string };
 
 const daysUntil = (d: string | null) => (d ? Math.round((new Date(d).getTime() - Date.now()) / 86400000) : null);
 
@@ -33,7 +34,7 @@ export default function FarmerHome({ onSos, onChangeLang }: {
       try {
         const { data: farmer } = await supabase.from('farmers').select('id').eq('user_id', user!.id).maybeSingle();
         if (farmer) {
-          const { data: m } = await supabase.from('maintenance_schedules').select('last_cleaning,last_battery_check,amc_expiry').eq('farmer_id', (farmer as any).id).maybeSingle();
+          const { data: m } = await supabase.from('maintenance_schedules').select('last_cleaning,last_battery_check,amc_expiry').eq('farmer_id', (farmer as FarmerRecord).id).maybeSingle();
           if (m) setMaint(m as Maintenance);
           const region = user?.region ?? 'Kolar';
           const { data: w } = await supabase.from('weather_alerts').select('forecast,rain_expected').eq('region', region).order('date', { ascending: false }).limit(1).maybeSingle();
@@ -45,7 +46,10 @@ export default function FarmerHome({ onSos, onChangeLang }: {
     })();
   }, [user, lang]);
 
-  const onMic = () => { voice.listening ? voice.stop() : voice.start(); };
+  const onMic = () => {
+    if (voice.listening) voice.stop();
+    else voice.start();
+  };
 
   useEffect(() => {
     if (!voice.transcript) return;
@@ -199,7 +203,7 @@ function InstallForm({ lang, onDone, kind }: { lang: string; onDone: () => void;
       } else {
         const { data: farmer } = await supabase.from('farmers').select('id').eq('user_id', user!.id).maybeSingle();
         if (farmer) await supabase.from('complaints').insert({
-          farmer_id: (farmer as any).id, status: 'open', priority: 'normal',
+          farmer_id: (farmer as FarmerRecord).id, status: 'open', priority: 'normal',
           voice_text: `Service request by ${name}`, category: 'general',
         });
       }

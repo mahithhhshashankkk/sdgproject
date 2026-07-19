@@ -7,6 +7,15 @@ import { BigButton, Header, Screen } from '../lib/ui';
 import { Camera, MapPin, CheckCircle2, Loader2 } from 'lucide-react';
 
 type Step = 'q1' | 'q2' | 'q3' | 'photo' | 'location' | 'analyzing' | 'simpleFix' | 'assigned' | 'done';
+type ComplaintInsert = {
+  farmer_id: string;
+  status: 'assigned' | 'open';
+  voice_text: string;
+  assigned_technician_id: string | null;
+  priority: 'sos';
+  category: 'general';
+  location?: string;
+};
 
 export default function SosFlow({ onDone }: { onDone: () => void }) {
   const { user } = useAuth();
@@ -92,7 +101,7 @@ export default function SosFlow({ onDone }: { onDone: () => void }) {
         p: coords ? `POINT(${coords.lng} ${coords.lat})` : null,
       });
 
-      const complaintRow: any = {
+      const complaintRow: ComplaintInsert = {
         farmer_id: farmer.id,
         status: nearest ? 'assigned' : 'open',
         voice_text: `Pump not working: ${answers.q1 ? 'yes' : 'no'}, Lights: ${answers.q2 ? 'yes' : 'no'}, Water: ${answers.q3 ? 'yes' : 'no'}`,

@@ -14,11 +14,14 @@ type Job = {
 };
 
 type FarmerInfo = { name: string; phone: string; address: string | null; region: string | null };
+type TechnicianRecord = { id: string; availability_status: string; rating: number };
+type FarmerRecord = { id: string; user_id: string; address: string | null };
+type UserRecord = { id: string; name: string; phone: string; region: string | null };
 
 export default function TechnicianHome() {
   const { user, signOut } = useAuth();
   const lang = user?.language ?? 'en';
-  const [tech, setTech] = useState<{ id: string; availability_status: string; rating: number } | null>(null);
+  const [tech, setTech] = useState<TechnicianRecord | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [farmers, setFarmers] = useState<Record<string, FarmerInfo>>({});
   const [loading, setLoading] = useState(true);
@@ -28,12 +31,13 @@ export default function TechnicianHome() {
       try {
         if (!user) return;
         const { data: techRow } = await supabase.from('technicians').select('id,availability_status,rating').eq('user_id', user.id).maybeSingle();
-        setTech(techRow as any);
-        if (techRow) {
+        const technician = techRow as TechnicianRecord | null;
+        setTech(technician);
+        if (technician) {
           const { data: jobRows } = await supabase
             .from('jobs')
             .select('id,status,created_at,complaint_id,complaints(voice_text,farmer_id)')
-            .eq('technician_id', (techRow as any).id)
+            .eq('technician_id', technician.id)
             .in('status', ['assigned', 'travelling', 'arrived'])
             .order('created_at', { ascending: true });
           const js = (jobRows as unknown as Job[]) ?? [];
@@ -41,12 +45,14 @@ export default function TechnicianHome() {
           const ids = [...new Set(js.map((j) => j.complaints?.farmer_id).filter(Boolean))] as string[];
           if (ids.length) {
             const { data: fRows } = await supabase.from('farmers').select('id,user_id,address').in('id', ids);
-            const uids = [...new Set((fRows ?? []).map((f: any) => f.user_id))] as string[];
-            const { data: uRows } = await supabase.from('users').select('id,name,phone,region').in('id', uids);
+            const farmerRows = (fRows ?? []) as FarmerRecord[];
+            const userIds = [...new Set(farmerRows.map((farmer) => farmer.user_id))];
+            const { data: uRows } = await supabase.from('users').select('id,name,phone,region').in('id', userIds);
+            const users = (uRows ?? []) as UserRecord[];
             const map: Record<string, FarmerInfo> = {};
-            (fRows ?? []).forEach((f: any) => {
-              const u = (uRows ?? []).find((x: any) => x.id === f.user_id) as any;
-              if (u) map[f.id] = { name: u.name, phone: u.phone, address: f.address, region: u.region };
+            farmerRows.forEach((farmer) => {
+              const account = users.find((entry) => entry.id === farmer.user_id);
+              if (account) map[farmer.id] = { name: account.name, phone: account.phone, address: farmer.address, region: account.region };
             });
             setFarmers(map);
           }
@@ -59,7 +65,7 @@ export default function TechnicianHome() {
   const advance = async (job: Job) => {
     try {
       const next = job.status === 'assigned' ? 'travelling' : job.status === 'travelling' ? 'arrived' : 'completed';
-      const patch: any = { status: next };
+      const patch: { status: string; completed_at?: string } = { status: next };
       if (next === 'completed') patch.completed_at = new Date().toISOString();
       await supabase.from('jobs').update(patch).eq('id', job.id);
       if (next === 'completed') {
