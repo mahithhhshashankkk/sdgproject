@@ -4,7 +4,7 @@
 export type QueuedOp = {
   id: string;
   table: string;
-  row: Record<string, any>;
+  row: Record<string, unknown>;
   ts: number;
 };
 
@@ -36,7 +36,7 @@ export function removeFromQueue(id: string) {
   localStorage.setItem(KEY, JSON.stringify(q));
 }
 
-export async function flushQueue(insertFn: (table: string, row: Record<string, any>) => Promise<boolean>) {
+export async function flushQueue(insertFn: (table: string, row: Record<string, unknown>) => Promise<boolean>) {
   const q = loadQueue();
   for (const item of q) {
     const ok = await insertFn(item.table, item.row);

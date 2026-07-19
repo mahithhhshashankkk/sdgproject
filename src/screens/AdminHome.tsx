@@ -6,6 +6,10 @@ import { Header, Screen } from '../lib/ui';
 import { Wrench, AlertCircle, Clock, CheckCircle2, Sprout, ShoppingCart, Package } from 'lucide-react';
 
 type Ticket = { id: string; sector: 'farmer' | 'vendor'; type: string; raisedBy: string; status: string; date: string };
+type ComplaintRow = { id: string; status: string; created_at: string; farmer_id: string | null };
+type FarmerRow = { id: string; user_id: string | null };
+type UserRow = { id: string; name: string | null };
+type InstallRequestRow = { id: string; farmer_name: string; status: string; created_at: string };
 
 export default function AdminHome() {
   const { user, signOut } = useAuth();
@@ -29,22 +33,25 @@ export default function AdminHome() {
         setMetrics({ farmers: farmers ?? 0, techs: techs ?? 0, complaints: complaints ?? 0, pending: pending ?? 0, completed: completed ?? 0, installs: installs ?? 0 });
 
         const { data: cRows } = await supabase.from('complaints').select('id,status,created_at,voice_text,farmer_id').order('created_at', { ascending: false }).limit(50);
-        const farmerIds = [...new Set((cRows ?? []).map((c: any) => c.farmer_id).filter(Boolean))] as string[];
+        const complaintRows = (cRows ?? []) as ComplaintRow[];
+        const farmerIds = [...new Set(complaintRows.map((complaint) => complaint.farmer_id).filter((id): id is string => Boolean(id)))];
         const { data: fRows } = await supabase.from('farmers').select('id,user_id').in('id', farmerIds);
-        const uids = [...new Set((fRows ?? []).map((f: any) => f.user_id))] as string[];
-        const { data: uRows } = await supabase.from('users').select('id,name').in('id', uids);
-        const fName = (fid: string) => {
-          const f = (fRows ?? []).find((x: any) => x.id === fid);
-          const u = (uRows ?? []).find((x: any) => x.id === f?.user_id) as any;
-          return u?.name ?? 'Unknown farmer';
+        const farmerRecords = (fRows ?? []) as FarmerRow[];
+        const userIds = [...new Set(farmerRecords.map((farmer) => farmer.user_id).filter((id): id is string => Boolean(id)))];
+        const { data: uRows } = await supabase.from('users').select('id,name').in('id', userIds);
+        const users = (uRows ?? []) as UserRow[];
+        const fName = (farmerId: string | null) => {
+          const farmer = farmerRecords.find((entry) => entry.id === farmerId);
+          const account = users.find((entry) => entry.id === farmer?.user_id);
+          return account?.name ?? 'Unknown farmer';
         };
-        const cTickets: Ticket[] = (cRows ?? []).map((c: any) => ({
-          id: c.id, sector: 'farmer', type: t(lang, 'complaints'), raisedBy: fName(c.farmer_id),
-          status: c.status, date: c.created_at,
+        const cTickets: Ticket[] = complaintRows.map((complaint) => ({
+          id: complaint.id, sector: 'farmer', type: t(lang, 'complaints'), raisedBy: fName(complaint.farmer_id),
+          status: complaint.status, date: complaint.created_at,
         }));
 
         const { data: iRows } = await supabase.from('install_requests').select('id,farmer_name,status,created_at').order('created_at', { ascending: false }).limit(50);
-        const iTickets: Ticket[] = (iRows ?? []).map((i: any) => ({
+        const iTickets: Ticket[] = ((iRows ?? []) as InstallRequestRow[]).map((i) => ({
           id: i.id, sector: 'vendor', type: t(lang, 'installReqs'), raisedBy: i.farmer_name,
           status: i.status, date: i.created_at,
         }));

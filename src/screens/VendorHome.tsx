@@ -7,11 +7,12 @@ import { IndianRupee, Check, X, ShoppingCart, Boxes, BarChart3 } from 'lucide-re
 
 type Part = { id: string; part_name: string; quantity: number; price: number; demand_forecast: number };
 type Order = { id: string; farmer_name: string; phone: string; region: string | null; acres: number | null; pump_model: string | null; status: string; created_at: string };
+type VendorRecord = { id: string; company_name: string; inventory_level: number; region: string | null };
 
 export default function VendorHome() {
   const { user, signOut } = useAuth();
   const lang = user?.language ?? 'en';
-  const [vendor, setVendor] = useState<{ id: string; company_name: string; inventory_level: number; region: string | null } | null>(null);
+  const [vendor, setVendor] = useState<VendorRecord | null>(null);
   const [parts, setParts] = useState<Part[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [tab, setTab] = useState<'new' | 'accepted' | 'inventory'>('new');
@@ -20,9 +21,10 @@ export default function VendorHome() {
     try {
       if (!user) return;
       const { data: v } = await supabase.from('vendors').select('id,company_name,inventory_level,region').eq('user_id', user.id).maybeSingle();
-      setVendor(v as any);
-      if (v) {
-        const { data: p } = await supabase.from('spare_parts').select('id,part_name,quantity,price,demand_forecast').eq('vendor_id', (v as any).id);
+      const vendorRecord = v as VendorRecord | null;
+      setVendor(vendorRecord);
+      if (vendorRecord) {
+        const { data: p } = await supabase.from('spare_parts').select('id,part_name,quantity,price,demand_forecast').eq('vendor_id', vendorRecord.id);
         setParts((p as Part[]) ?? []);
       }
       const { data: o } = await supabase.from('install_requests').select('*').order('created_at', { ascending: false });
@@ -34,7 +36,7 @@ export default function VendorHome() {
 
   const act = async (id: string, status: 'accepted' | 'rejected') => {
     try {
-      const patch: any = { status };
+      const patch: { status: 'accepted' | 'rejected'; vendor_id?: string } = { status };
       if (status === 'accepted' && vendor) patch.vendor_id = vendor.id;
       await supabase.from('install_requests').update(patch).eq('id', id);
       load();
