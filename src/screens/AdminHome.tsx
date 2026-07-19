@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { t } from '../lib/i18n';
 import { Header, Screen } from '../lib/ui';
-import { Users, Wrench, AlertCircle, Clock, CheckCircle2, Sprout, ShoppingCart, Package } from 'lucide-react';
+import { Wrench, AlertCircle, Clock, CheckCircle2, Sprout, ShoppingCart, Package } from 'lucide-react';
 
 type Ticket = { id: string; sector: 'farmer' | 'vendor'; type: string; raisedBy: string; status: string; date: string };
 

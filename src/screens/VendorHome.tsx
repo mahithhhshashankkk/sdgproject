@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { t } from '../lib/i18n';
 import { Header, Screen } from '../lib/ui';
-import { Package, TrendingUp, IndianRupee, Check, X, ShoppingCart, Boxes, BarChart3 } from 'lucide-react';
+import { IndianRupee, Check, X, ShoppingCart, Boxes, BarChart3 } from 'lucide-react';
 
 type Part = { id: string; part_name: string; quantity: number; price: number; demand_forecast: number };
 type Order = { id: string; farmer_name: string; phone: string; region: string | null; acres: number | null; pump_model: string | null; status: string; created_at: string };
