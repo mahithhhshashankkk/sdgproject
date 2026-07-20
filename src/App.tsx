@@ -4,6 +4,7 @@ import RolePicker from './screens/RolePicker';
 import FarmerLanguage from './screens/FarmerLanguage';
 import FarmerHome from './screens/FarmerHome';
 import SosFlow from './screens/SosFlow';
+import FarmerTrack from './screens/FarmerTrack';
 import TechnicianHome from './screens/TechnicianHome';
 import VendorHome from './screens/VendorHome';
 import AdminHome from './screens/AdminHome';
@@ -33,10 +34,12 @@ function Router() {
   if (user.role === 'farmer') {
     if (farmerView === 'lang') return <FarmerLanguage onDone={() => setFarmerView('home')} />;
     if (farmerView === 'sos') return <SosFlow onDone={() => setFarmerView('home')} />;
+    if (farmerView === 'track') return <FarmerTrack onDone={() => setFarmerView('home')} />;
     return (
       <FarmerHome
         onSos={() => setFarmerView('sos')}
         onChangeLang={() => setFarmerView('lang')}
+        onTrack={() => setFarmerView('track')}
       />
     );
   }

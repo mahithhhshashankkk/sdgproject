@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { t } from '../lib/i18n';
-import { useVoice, speak } from '../lib/voice';
+import { useVoice } from '../lib/voice';
 import { IconTile, Screen, StatusDot, BigButton, Header } from '../lib/ui';
 import {
-  Siren, ShoppingCart, Wrench, CalendarClock, ShieldCheck, Phone, Sprout, Mic, Sun, Bell, Cloud, CloudRain, Truck, Package,
+  Siren, ShoppingCart, Wrench, CalendarClock, ShieldCheck, Phone, Sprout, Mic, Sun, Bell, Cloud, CloudRain, Truck, Package, MapPin,
 } from 'lucide-react';
 
 const LANG_BADGE: Record<string, string> = { en: 'EN', kn: 'ಕನ್ನಡ', te: 'తె', hi: 'हि', ta: 'த' };
@@ -17,8 +17,33 @@ type FarmerRecord = { id: string };
 
 const daysUntil = (d: string | null) => (d ? Math.round((new Date(d).getTime() - Date.now()) / 86400000) : null);
 
-export default function FarmerHome({ onSos, onChangeLang }: {
-  onSos: () => void; onChangeLang: () => void;
+type PumpSuggestion = { model: string; power: string; company: string; price: number };
+
+function suggestPumps(acres: number): PumpSuggestion[] {
+  if (acres <= 0) return [];
+  if (acres <= 2) return [
+    { model: 'SSP-1HP', power: '1 HP (0.75 kW)', company: 'Tata Power Solar', price: 45000 },
+    { model: 'Aqua-1', power: '1 HP (0.75 kW)', company: 'Luminous', price: 38000 },
+  ];
+  if (acres <= 5) return [
+    { model: 'SSP-2HP', power: '2 HP (1.5 kW)', company: 'Tata Power Solar', price: 85000 },
+    { model: 'Aqua-2', power: '2 HP (1.5 kW)', company: 'Luminous', price: 72000 },
+    { model: 'SunMax-2', power: '2 HP (1.5 kW)', company: 'Vikram Solar', price: 68000 },
+  ];
+  if (acres <= 10) return [
+    { model: 'SSP-3HP', power: '3 HP (2.2 kW)', company: 'Tata Power Solar', price: 125000 },
+    { model: 'SunMax-3', power: '3 HP (2.2 kW)', company: 'Vikram Solar', price: 110000 },
+    { model: 'Aqua-3', power: '3 HP (2.2 kW)', company: 'Luminous', price: 98000 },
+  ];
+  return [
+    { model: 'SSP-5HP', power: '5 HP (3.7 kW)', company: 'Tata Power Solar', price: 185000 },
+    { model: 'SunMax-5', power: '5 HP (3.7 kW)', company: 'Vikram Solar', price: 165000 },
+    { model: 'Aqua-5', power: '5 HP (3.7 kW)', company: 'Luminous', price: 145000 },
+  ];
+}
+
+export default function FarmerHome({ onSos, onChangeLang, onTrack }: {
+  onSos: () => void; onChangeLang: () => void; onTrack: () => void;
 }) {
   const { user, signOut } = useAuth();
   const lang = user?.language ?? 'en';
@@ -29,7 +54,6 @@ export default function FarmerHome({ onSos, onChangeLang }: {
   const [schemes, setSchemes] = useState<Scheme[]>([]);
 
   useEffect(() => {
-    speak(`${t(lang, 'hello')} ${user?.name ?? ''}. ${t(lang, 'howHelp')}`, lang);
     (async () => {
       try {
         const { data: farmer } = await supabase.from('farmers').select('id').eq('user_id', user!.id).maybeSingle();
@@ -65,7 +89,6 @@ export default function FarmerHome({ onSos, onChangeLang }: {
   const battery = daysUntil(maint?.last_battery_check ? new Date(maint.last_battery_check).toISOString() : null);
   const amc = daysUntil(maint?.amc_expiry ?? null);
 
-  // ---- Subsidy view ----
   if (view === 'subsidy') return (
     <Screen>
       <Header title={t(lang, 'govtSchemes')} onBack={() => setView('home')} />
@@ -86,13 +109,10 @@ export default function FarmerHome({ onSos, onChangeLang }: {
     </Screen>
   );
 
-  // ---- Install ticket view ----
-  if (view === 'install') return <InstallForm lang={lang} onDone={() => setView('home')} kind="install" />;
+  if (view === 'install') return <PumpBooking lang={lang} onDone={() => setView('home')} />;
 
-  // ---- Service ticket view ----
-  if (view === 'service') return <InstallForm lang={lang} onDone={() => setView('home')} kind="service" />;
+  if (view === 'service') return <InstallForm lang={lang} onDone={() => setView('home')} />;
 
-  // ---- Warranty view ----
   if (view === 'warranty') return (
     <Screen>
       <Header title={t(lang, 'warranty')} onBack={() => setView('home')} />
@@ -104,7 +124,6 @@ export default function FarmerHome({ onSos, onChangeLang }: {
     </Screen>
   );
 
-  // ---- Home ----
   return (
     <Screen>
       <header className="bg-amber-500 text-white px-4 py-4 flex items-center gap-3 shadow-md">
@@ -126,7 +145,6 @@ export default function FarmerHome({ onSos, onChangeLang }: {
         {voice.transcript && <p className="text-sm text-gray-700 italic">"{voice.transcript}"</p>}
       </div>
 
-      {/* Weather indicator */}
       <div className={`mx-4 mb-3 rounded-2xl p-3 flex items-center gap-3 ${weather?.rain_expected ? 'bg-blue-100' : 'bg-green-100'}`}>
         {weather?.rain_expected ? <CloudRain className="w-7 h-7 text-blue-600" /> : <Cloud className="w-7 h-7 text-green-600" />}
         <p className="text-sm font-semibold text-gray-800">{weather?.rain_expected ? t(lang, 'rainAlert') : weather?.forecast ?? t(lang, 'noRain')}</p>
@@ -138,13 +156,13 @@ export default function FarmerHome({ onSos, onChangeLang }: {
         </button>
         <IconTile icon={<ShoppingCart className="w-8 h-8" />} label={t(lang, 'buyPump')} onClick={() => setView('install')} color="bg-blue-100" />
         <IconTile icon={<Wrench className="w-8 h-8" />} label={t(lang, 'bookService')} onClick={() => setView('service')} color="bg-green-100" />
+        <IconTile icon={<MapPin className="w-8 h-8" />} label={t(lang, 'trackTech')} onClick={onTrack} color="bg-indigo-100" />
         <IconTile icon={<CalendarClock className="w-8 h-8" />} label={t(lang, 'maintenance')} onClick={() => setView('service')} color="bg-yellow-100" />
         <IconTile icon={<ShieldCheck className="w-8 h-8" />} label={t(lang, 'warranty')} onClick={() => setView('warranty')} color="bg-teal-100" />
         <IconTile icon={<Sprout className="w-8 h-8" />} label={t(lang, 'subsidy')} onClick={() => setView('subsidy')} color="bg-lime-100" />
         <IconTile icon={<Phone className="w-8 h-8" />} label={t(lang, 'callSupport')} onClick={() => window.location.href = 'tel:1800200300'} color="bg-orange-100" />
       </main>
 
-      {/* Logistics services */}
       <section className="px-4 pb-2">
         <h2 className="font-bold text-gray-800 mb-2 flex items-center gap-2"><Truck className="w-5 h-5 text-amber-600" /> {t(lang, 'logistics')}</h2>
         <div className="grid grid-cols-2 gap-3">
@@ -182,31 +200,125 @@ function StatusCard({ color, label, value }: { color: 'green' | 'yellow' | 'red'
   );
 }
 
-// Simple ticket form for install / service. Writes to install_requests (install) or complaints (service).
-function InstallForm({ lang, onDone, kind }: { lang: string; onDone: () => void; kind: 'install' | 'service' }) {
+function PumpBooking({ lang, onDone }: { lang: string; onDone: () => void }) {
+  const { user } = useAuth();
+  const [phase, setPhase] = useState<'book' | 'details' | 'done'>('book');
+  const [acres, setAcres] = useState('');
+  const [selectedPump, setSelectedPump] = useState<PumpSuggestion | null>(null);
+
+  const installHours = selectedPump
+    ? selectedPump.power.includes('1 HP') ? 4 : selectedPump.power.includes('2 HP') ? 6 : selectedPump.power.includes('3 HP') ? 8 : 12
+    : 0;
+
+  const submitBooking = async () => {
+    if (!selectedPump || !user) return;
+    try {
+      await supabase.from('install_requests').insert({
+        farmer_name: user.name, phone: user.phone, region: user?.region ?? null,
+        acres: acres ? Number(acres) : null, pump_model: selectedPump.model, status: 'new',
+      });
+    } catch { /* best-effort */ }
+    setPhase('done');
+  };
+
+  if (phase === 'done') return (
+    <Screen>
+      <Header title={t(lang, 'installation')} onBack={onDone} />
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
+        <ShieldCheck className="w-16 h-16 text-green-500" />
+        <p className="text-lg font-semibold text-gray-800">{t(lang, 'pumpBooked')}</p>
+        {selectedPump && <p className="text-sm text-gray-600">{selectedPump.model} · {selectedPump.company}</p>}
+        <BigButton onClick={onDone} color="bg-green-600">{t(lang, 'done')}</BigButton>
+      </div>
+    </Screen>
+  );
+
+  if (phase === 'book') return (
+    <Screen>
+      <Header title={t(lang, 'installation')} onBack={onDone} />
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 p-6 text-center">
+        <Package className="w-20 h-20 text-indigo-500" />
+        <p className="text-lg font-semibold text-gray-800">{t(lang, 'installation')}</p>
+        <BigButton onClick={() => setPhase('details')} color="bg-indigo-600">{t(lang, 'bookPump')}</BigButton>
+      </div>
+    </Screen>
+  );
+
+  const acreNum = parseFloat(acres) || 0;
+  const suggestions = suggestPumps(acreNum);
+
+  return (
+    <Screen>
+      <Header title={t(lang, 'installation')} onBack={onDone} />
+      <div className="flex-1 p-4 flex flex-col gap-4 max-w-md mx-auto w-full overflow-auto">
+        <div className="bg-indigo-50 rounded-2xl p-4 text-center">
+          <p className="text-sm font-semibold text-indigo-700">{t(lang, 'installDuration')}</p>
+          <p className="text-2xl font-extrabold text-indigo-800 mt-1">{installHours > 0 ? `${installHours} ${t(lang, 'hours')}` : '—'}</p>
+        </div>
+
+        <div>
+          <label className="text-sm font-semibold text-gray-700">{t(lang, 'enterAcreage')} *</label>
+          <input
+            value={acres}
+            onChange={(e) => { setAcres(e.target.value); setSelectedPump(null); }}
+            placeholder={t(lang, 'acresLand')}
+            inputMode="decimal"
+            className="mt-1 w-full px-4 py-4 rounded-2xl border-2 border-amber-200 focus:border-amber-500 outline-none text-lg"
+          />
+        </div>
+
+        {acreNum > 0 && (
+          <div>
+            <h3 className="font-bold text-gray-800 mb-2">{t(lang, 'pumpSuggestions')}</h3>
+            <div className="space-y-3">
+              {suggestions.map((p) => (
+                <button
+                  key={p.model}
+                  onClick={() => setSelectedPump(p)}
+                  className={`w-full text-left rounded-2xl p-4 shadow-sm border-2 transition active:scale-95 ${selectedPump?.model === p.model ? 'border-indigo-500 bg-indigo-50' : 'border-transparent bg-white'}`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-bold text-gray-800">{p.model}</p>
+                      <p className="text-sm text-gray-600">{p.company}</p>
+                      <p className="text-sm text-gray-600">{t(lang, 'power')}: {p.power}</p>
+                    </div>
+                    <span className="text-lg font-extrabold text-indigo-600">₹{p.price.toLocaleString('en-IN')}</span>
+                  </div>
+                  {selectedPump?.model === p.model && (
+                    <p className="text-xs text-indigo-600 font-semibold mt-2">{t(lang, 'pumpSelected')}</p>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {acreNum <= 0 && <p className="text-sm text-gray-500 text-center">{t(lang, 'acreageRequired')}</p>}
+
+        <BigButton onClick={submitBooking} disabled={!selectedPump} color="bg-green-600">
+          {t(lang, 'submit')}
+        </BigButton>
+      </div>
+    </Screen>
+  );
+}
+
+function InstallForm({ lang, onDone }: { lang: string; onDone: () => void }) {
   const { user } = useAuth();
   const [name, setName] = useState(user?.name ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
-  const [acres, setAcres] = useState('');
-  const [model, setModel] = useState('');
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     setBusy(true);
     try {
-      if (kind === 'install') {
-        await supabase.from('install_requests').insert({
-          farmer_name: name, phone, region: user?.region ?? null,
-          acres: acres ? Number(acres) : null, pump_model: model || null, status: 'new',
-        });
-      } else {
-        const { data: farmer } = await supabase.from('farmers').select('id').eq('user_id', user!.id).maybeSingle();
-        if (farmer) await supabase.from('complaints').insert({
-          farmer_id: (farmer as FarmerRecord).id, status: 'open', priority: 'normal',
-          voice_text: `Service request by ${name}`, category: 'general',
-        });
-      }
+      const { data: farmer } = await supabase.from('farmers').select('id').eq('user_id', user!.id).maybeSingle();
+      if (farmer) await supabase.from('complaints').insert({
+        farmer_id: (farmer as FarmerRecord).id, status: 'open', priority: 'normal',
+        voice_text: `Service request by ${name}`, category: 'general',
+      });
       setDone(true);
     } catch { setDone(true); }
     setBusy(false);
@@ -214,10 +326,10 @@ function InstallForm({ lang, onDone, kind }: { lang: string; onDone: () => void;
 
   if (done) return (
     <Screen>
-      <Header title={kind === 'install' ? t(lang, 'installation') : t(lang, 'generalService')} onBack={onDone} />
+      <Header title={t(lang, 'generalService')} onBack={onDone} />
       <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
         <ShieldCheck className="w-16 h-16 text-green-500" />
-        <p className="text-lg font-semibold text-gray-800">{kind === 'install' ? t(lang, 'ticketRaised') : t(lang, 'serviceBooked')}</p>
+        <p className="text-lg font-semibold text-gray-800">{t(lang, 'serviceBooked')}</p>
         <BigButton onClick={onDone} color="bg-green-600">{t(lang, 'done')}</BigButton>
       </div>
     </Screen>
@@ -225,16 +337,13 @@ function InstallForm({ lang, onDone, kind }: { lang: string; onDone: () => void;
 
   return (
     <Screen>
-      <Header title={kind === 'install' ? t(lang, 'installation') : t(lang, 'generalService')} onBack={onDone} />
+      <Header title={t(lang, 'generalService')} onBack={onDone} />
       <div className="flex-1 p-4 flex flex-col gap-4 max-w-md mx-auto w-full">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t(lang, 'yourName')} className="px-4 py-4 rounded-2xl border-2 border-amber-200 focus:border-amber-500 outline-none text-lg" />
         <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={t(lang, 'phoneNo')} inputMode="tel" className="px-4 py-4 rounded-2xl border-2 border-amber-200 focus:border-amber-500 outline-none text-lg" />
-        {kind === 'install' && <>
-          <input value={acres} onChange={(e) => setAcres(e.target.value)} placeholder={t(lang, 'acresLand')} inputMode="decimal" className="px-4 py-4 rounded-2xl border-2 border-amber-200 focus:border-amber-500 outline-none text-lg" />
-          <input value={model} onChange={(e) => setModel(e.target.value)} placeholder={t(lang, 'pumpModel')} className="px-4 py-4 rounded-2xl border-2 border-amber-200 focus:border-amber-500 outline-none text-lg" />
-        </>}
         <BigButton onClick={submit} disabled={busy || !name || !phone} color="bg-green-600">{busy ? '...' : t(lang, 'submit')}</BigButton>
       </div>
     </Screen>
   );
 }
+
