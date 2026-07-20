@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { t } from '../lib/i18n';
 import { Header, Screen } from '../lib/ui';
+import { LangButton } from '../lib/LangButton';
 import { IndianRupee, Check, X, ShoppingCart, Boxes, BarChart3 } from 'lucide-react';
 
 type Part = { id: string; part_name: string; quantity: number; price: number; demand_forecast: number };
@@ -50,7 +51,7 @@ export default function VendorHome() {
 
   return (
     <Screen className="bg-slate-50">
-      <Header title={vendor?.company_name ?? 'Vendor'} />
+      <Header title={vendor?.company_name ?? 'Vendor'} right={<LangButton />} />
       <div className="px-4 py-3 grid grid-cols-3 gap-2">
         <Metric icon={<Boxes className="w-5 h-5" />} value={totalStock} label={t(lang, 'inventory')} color="bg-blue-50 text-blue-700 border border-blue-200" />
         <Metric icon={<ShoppingCart className="w-5 h-5" />} value={newOrders.length} label={t(lang, 'newOrders')} color="bg-orange-50 text-orange-700 border border-orange-200" />

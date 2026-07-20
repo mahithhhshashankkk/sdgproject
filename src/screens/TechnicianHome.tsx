@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { t } from '../lib/i18n';
 import { Header, Screen } from '../lib/ui';
+import { LangButton } from '../lib/LangButton';
 import { CheckCircle2, XCircle, Star, Phone, User, Home, Play, Navigation } from 'lucide-react';
 
 type Complaint = {
@@ -198,9 +199,12 @@ export default function TechnicianHome() {
   return (
     <Screen>
       <Header title={t(lang, 'todayJobs')} right={
-        <button onClick={toggleAvail} className="px-3 py-1 rounded-full text-sm font-semibold bg-white/20">
-          {tech?.availability_status === 'available' ? '🟢' : '🟡'}
-        </button>
+        <div className="flex items-center gap-2">
+          <LangButton />
+          <button onClick={toggleAvail} className="px-3 py-1 rounded-full text-sm font-semibold bg-white/20">
+            {tech?.availability_status === 'available' ? '🟢' : '🟡'}
+          </button>
+        </div>
       } />
 
       <div className="px-4 py-3 flex items-center justify-between">

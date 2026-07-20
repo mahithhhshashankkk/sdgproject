@@ -4,11 +4,10 @@ import { useAuth } from '../lib/auth';
 import { t } from '../lib/i18n';
 import { useVoice } from '../lib/voice';
 import { IconTile, Screen, StatusDot, BigButton, Header } from '../lib/ui';
+import { LangButton } from '../lib/LangButton';
 import {
   Siren, ShoppingCart, Wrench, CalendarClock, ShieldCheck, Phone, Sprout, Mic, Sun, Bell, Cloud, CloudRain, Truck, Package, MapPin,
 } from 'lucide-react';
-
-const LANG_BADGE: Record<string, string> = { en: 'EN', kn: 'ಕನ್ನಡ', te: 'తె', hi: 'हि', ta: 'த' };
 
 type Maintenance = { last_cleaning: string | null; last_battery_check: string | null; amc_expiry: string | null };
 type Weather = { forecast: string; rain_expected: boolean };
@@ -42,8 +41,8 @@ function suggestPumps(acres: number): PumpSuggestion[] {
   ];
 }
 
-export default function FarmerHome({ onSos, onChangeLang, onTrack }: {
-  onSos: () => void; onChangeLang: () => void; onTrack: () => void;
+export default function FarmerHome({ onSos, onTrack }: {
+  onSos: () => void; onTrack: () => void;
 }) {
   const { user, signOut } = useAuth();
   const lang = user?.language ?? 'en';
@@ -132,7 +131,7 @@ export default function FarmerHome({ onSos, onChangeLang, onTrack }: {
           <h1 className="text-xl font-extrabold leading-tight">SuryaSetu</h1>
           <p className="text-sm text-white/90">{t(lang, 'hello')}, {user?.name ?? ''}</p>
         </div>
-        <button onClick={onChangeLang} className="px-3 h-10 flex items-center justify-center rounded-full bg-white/20 text-sm font-semibold active:scale-95">{LANG_BADGE[lang] ?? 'EN'}</button>
+        <LangButton />
         <button onClick={() => signOut()} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/20" aria-label="Logout"><span className="text-lg">⏻</span></button>
       </header>
 
@@ -153,6 +152,9 @@ export default function FarmerHome({ onSos, onChangeLang, onTrack }: {
       <main className="px-4 pb-4 grid grid-cols-2 gap-3">
         <button onClick={onSos} className="col-span-2 bg-red-500 text-white rounded-2xl p-5 flex items-center justify-center gap-3 min-h-[64px] active:scale-95 transition-transform shadow-md">
           <Siren className="w-7 h-7" /><span className="text-xl font-extrabold">{t(lang, 'sos')}</span>
+        </button>
+        <button onClick={() => window.location.href = 'tel:1800200300'} className="col-span-2 bg-blue-600 text-white rounded-2xl p-4 flex items-center justify-center gap-3 min-h-[56px] active:scale-95 transition-transform shadow-md">
+          <Phone className="w-6 h-6" /><div className="flex flex-col items-start"><span className="text-base font-bold">{t(lang, 'callTollFree')}</span><span className="text-xs text-white/85">{t(lang, 'callTollFreeDesc')}</span></div>
         </button>
         <IconTile icon={<ShoppingCart className="w-8 h-8" />} label={t(lang, 'buyPump')} onClick={() => setView('install')} color="bg-blue-100" />
         <IconTile icon={<Wrench className="w-8 h-8" />} label={t(lang, 'bookService')} onClick={() => setView('service')} color="bg-green-100" />

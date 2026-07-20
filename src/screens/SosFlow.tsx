@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { t } from '../lib/i18n';
 import { BigButton, Header, Screen } from '../lib/ui';
-import { Camera, Mic, CheckCircle2, Play, Square, Send, RotateCcw, Image as ImageIcon } from 'lucide-react';
+import { Camera, Mic, CheckCircle2, Play, Square, Send, RotateCcw, Image as ImageIcon, Phone } from 'lucide-react';
 
 type Step = 'choose' | 'photo' | 'voice' | 'sending' | 'done';
 type FarmerRecord = { id: string };
@@ -152,6 +152,9 @@ export default function SosFlow({ onDone }: { onDone: () => void }) {
             <BigButton onClick={() => setStep('voice')} color="bg-amber-500">
               <span className="flex items-center justify-center gap-2"><Mic className="w-6 h-6" /> {t(lang, 'recordVoice')}</span>
             </BigButton>
+            <button onClick={() => window.location.href = 'tel:1800200300'} className="w-full bg-blue-600 text-white rounded-2xl p-4 flex items-center justify-center gap-3 min-h-[56px] active:scale-95 transition-transform shadow-md">
+              <Phone className="w-6 h-6" /><div className="flex flex-col items-start"><span className="text-base font-bold">{t(lang, 'callTollFree')}</span><span className="text-xs text-white/85">{t(lang, 'callTollFreeDesc')}</span></div>
+            </button>
           </div>
         )}
 

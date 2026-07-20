@@ -28,7 +28,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 function Router() {
   const { user } = useAuth();
   const [farmerView, setFarmerView] = useState<'lang' | 'home' | 'sos' | 'track'>('lang');
-
   if (!user) return <RolePicker />;
 
   if (user.role === 'farmer') {
@@ -38,7 +37,6 @@ function Router() {
     return (
       <FarmerHome
         onSos={() => setFarmerView('sos')}
-        onChangeLang={() => setFarmerView('lang')}
         onTrack={() => setFarmerView('track')}
       />
     );
