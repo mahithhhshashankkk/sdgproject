@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth';
 import { t } from '../lib/i18n';
 import { Header, Screen } from '../lib/ui';
 import { LangButton } from '../lib/LangButton';
-import { Wrench, AlertCircle, Clock, CheckCircle2, Sprout, ShoppingCart, Package } from 'lucide-react';
+import { Wrench, AlertCircle, Clock, CheckCircle2, Sprout, ShoppingCart, Package, LogOut } from 'lucide-react';
 
 type Ticket = { id: string; sector: 'farmer' | 'vendor'; type: string; raisedBy: string; status: string; date: string };
 type ComplaintRow = { id: string; status: string; created_at: string; farmer_id: string | null };
@@ -72,7 +72,12 @@ export default function AdminHome() {
 
   return (
     <Screen className="bg-slate-50">
-      <Header title="SuryaSetu · Admin" right={<LangButton />} />
+      <Header title="SuryaSetu · Admin" right={
+        <div className="flex items-center gap-2">
+          <LangButton />
+          <button onClick={() => signOut()} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/20" aria-label="Logout"><LogOut className="w-5 h-5" /></button>
+        </div>
+      } />
       <div className="px-4 py-3 grid grid-cols-6 gap-2">
         <Metric icon={<Sprout className="w-5 h-5" />} value={metrics.farmers} label={t(lang, 'totalFarmers')} color="bg-emerald-50 text-emerald-700 border border-emerald-200" />
         <Metric icon={<Wrench className="w-5 h-5" />} value={metrics.techs} label={t(lang, 'activeTech')} color="bg-blue-50 text-blue-700 border border-blue-200" />
@@ -107,7 +112,6 @@ export default function AdminHome() {
         ))}
       </main>
 
-      <button onClick={() => signOut()} className="m-4 bg-slate-200 text-slate-700 rounded-2xl py-3 font-semibold">{t(lang, 'logout')}</button>
     </Screen>
   );
 }

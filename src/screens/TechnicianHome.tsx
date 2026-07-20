@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth';
 import { t } from '../lib/i18n';
 import { Header, Screen } from '../lib/ui';
 import { LangButton } from '../lib/LangButton';
-import { CheckCircle2, XCircle, Star, Phone, User, Home, Play, Navigation } from 'lucide-react';
+import { CheckCircle2, XCircle, Star, Phone, User, Home, Play, Navigation, LogOut } from 'lucide-react';
 
 type Complaint = {
   id: string;
@@ -204,6 +204,7 @@ export default function TechnicianHome() {
           <button onClick={toggleAvail} className="px-3 py-1 rounded-full text-sm font-semibold bg-white/20">
             {tech?.availability_status === 'available' ? '🟢' : '🟡'}
           </button>
+          <button onClick={() => signOut()} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/20" aria-label="Logout"><LogOut className="w-5 h-5" /></button>
         </div>
       } />
 
@@ -296,7 +297,6 @@ export default function TechnicianHome() {
         )}
       </main>
 
-      <button onClick={() => signOut()} className="m-4 bg-gray-200 text-gray-700 rounded-2xl py-3 font-semibold">{t(lang, 'logout')}</button>
     </Screen>
   );
 }

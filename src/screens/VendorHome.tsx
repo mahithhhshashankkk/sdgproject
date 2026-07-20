@@ -4,7 +4,7 @@ import { useAuth } from '../lib/auth';
 import { t } from '../lib/i18n';
 import { Header, Screen } from '../lib/ui';
 import { LangButton } from '../lib/LangButton';
-import { IndianRupee, Check, X, ShoppingCart, Boxes, BarChart3 } from 'lucide-react';
+import { IndianRupee, Check, X, ShoppingCart, Boxes, BarChart3, LogOut } from 'lucide-react';
 
 type Part = { id: string; part_name: string; quantity: number; price: number; demand_forecast: number };
 type Order = { id: string; farmer_name: string; phone: string; region: string | null; acres: number | null; pump_model: string | null; status: string; created_at: string };
@@ -51,7 +51,12 @@ export default function VendorHome() {
 
   return (
     <Screen className="bg-slate-50">
-      <Header title={vendor?.company_name ?? 'Vendor'} right={<LangButton />} />
+      <Header title={vendor?.company_name ?? 'Vendor'} right={
+        <div className="flex items-center gap-2">
+          <LangButton />
+          <button onClick={() => signOut()} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/20" aria-label="Logout"><LogOut className="w-5 h-5" /></button>
+        </div>
+      } />
       <div className="px-4 py-3 grid grid-cols-3 gap-2">
         <Metric icon={<Boxes className="w-5 h-5" />} value={totalStock} label={t(lang, 'inventory')} color="bg-blue-50 text-blue-700 border border-blue-200" />
         <Metric icon={<ShoppingCart className="w-5 h-5" />} value={newOrders.length} label={t(lang, 'newOrders')} color="bg-orange-50 text-orange-700 border border-orange-200" />
@@ -124,7 +129,6 @@ export default function VendorHome() {
         )}
       </main>
 
-      <button onClick={() => signOut()} className="m-4 bg-slate-200 text-slate-700 rounded-2xl py-3 font-semibold">{t(lang, 'logout')}</button>
     </Screen>
   );
 }

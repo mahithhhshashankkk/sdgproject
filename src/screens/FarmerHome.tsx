@@ -6,14 +6,21 @@ import { useVoice } from '../lib/voice';
 import { IconTile, Screen, StatusDot, BigButton, Header } from '../lib/ui';
 import { LangButton } from '../lib/LangButton';
 import {
-  Siren, ShoppingCart, Wrench, CalendarClock, ShieldCheck, Phone, Sprout, Mic, Sun, Bell, Cloud, CloudRain, Truck, Package, MapPin,
+  Siren, ShoppingCart, Wrench, CalendarClock, ShieldCheck, Phone, Sprout, Mic, Sun, Bell, Truck, Package, MapPin,
 } from 'lucide-react';
 
 type Maintenance = { last_cleaning: string | null; last_battery_check: string | null; amc_expiry: string | null };
-type Weather = { forecast: string; rain_expected: boolean };
+type Weather = { forecast: string; rain_expected: boolean; temperature: number | null; date: string };
 type Scheme = { id: string; name: string; description: string | null; subsidy_percent: number | null; region: string | null; eligibility: string | null };
 type FarmerRecord = { id: string };
 
+function weatherIcon(forecast: string) {
+  const f = forecast.toLowerCase();
+  if (f.includes('thunder')) return '⛈️';
+  if (f.includes('rain')) return '🌦️';
+  if (f.includes('cloud')) return '☁️';
+  return '☀️';
+}
 const daysUntil = (d: string | null) => (d ? Math.round((new Date(d).getTime() - Date.now()) / 86400000) : null);
 
 type PumpSuggestion = { model: string; power: string; company: string; price: number };
@@ -48,7 +55,7 @@ export default function FarmerHome({ onSos, onTrack }: {
   const lang = user?.language ?? 'en';
   const voice = useVoice(lang);
   const [maint, setMaint] = useState<Maintenance | null>(null);
-  const [weather, setWeather] = useState<Weather | null>(null);
+  const [weather, setWeather] = useState<Weather[]>([]);
   const [view, setView] = useState<'home' | 'subsidy' | 'install' | 'service' | 'warranty'>('home');
   const [schemes, setSchemes] = useState<Scheme[]>([]);
 
@@ -60,8 +67,8 @@ export default function FarmerHome({ onSos, onTrack }: {
           const { data: m } = await supabase.from('maintenance_schedules').select('last_cleaning,last_battery_check,amc_expiry').eq('farmer_id', (farmer as FarmerRecord).id).maybeSingle();
           if (m) setMaint(m as Maintenance);
           const region = user?.region ?? 'Kolar';
-          const { data: w } = await supabase.from('weather_alerts').select('forecast,rain_expected').eq('region', region).order('date', { ascending: false }).limit(1).maybeSingle();
-          if (w) setWeather(w as Weather);
+          const { data: w } = await supabase.from('weather_alerts').select('forecast,rain_expected,temperature,date').eq('region', region).order('date', { ascending: true }).limit(3);
+          if (w) setWeather(w as Weather[]);
         }
         const { data: s } = await supabase.from('govt_schemes').select('*');
         setSchemes((s as Scheme[]) ?? []);
@@ -144,9 +151,32 @@ export default function FarmerHome({ onSos, onTrack }: {
         {voice.transcript && <p className="text-sm text-gray-700 italic">"{voice.transcript}"</p>}
       </div>
 
-      <div className={`mx-4 mb-3 rounded-2xl p-3 flex items-center gap-3 ${weather?.rain_expected ? 'bg-blue-100' : 'bg-green-100'}`}>
-        {weather?.rain_expected ? <CloudRain className="w-7 h-7 text-blue-600" /> : <Cloud className="w-7 h-7 text-green-600" />}
-        <p className="text-sm font-semibold text-gray-800">{weather?.rain_expected ? t(lang, 'rainAlert') : weather?.forecast ?? t(lang, 'noRain')}</p>
+      <div className="mx-4 mb-3">
+        <div className={`rounded-2xl p-4 ${weather[0]?.rain_expected ? 'bg-blue-100' : 'bg-green-100'}`}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-3xl">{weather[0] ? weatherIcon(weather[0].forecast) : '☀️'}</span>
+              <div>
+                <p className="text-sm font-semibold text-gray-800">{weather[0]?.forecast ?? '—'}</p>
+                <p className="text-2xl font-extrabold text-gray-900">{weather[0]?.temperature != null ? `${weather[0].temperature}°C` : '—'}</p>
+              </div>
+            </div>
+            {weather[0]?.rain_expected && <span className="text-xs font-bold text-blue-700 bg-blue-200 px-2 py-1 rounded-full">{t(lang, 'rainAlert')}</span>}
+          </div>
+          {weather.length > 1 && (
+            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/50">
+              {weather.slice(1).map((w, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-xl">{weatherIcon(w.forecast)}</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-600 font-medium">{i === 0 ? t(lang, 'tomorrow') : t(lang, 'dayAfter')}</span>
+                    <span className="text-sm font-bold text-gray-800">{w.temperature != null ? `${w.temperature}°C` : '—'} · {w.forecast}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <main className="px-4 pb-4 grid grid-cols-2 gap-3">
